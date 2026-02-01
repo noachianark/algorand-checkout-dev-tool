@@ -79,11 +79,6 @@ function formatAmount(microAmount: string): string {
   return (Number(microAmount) / 1_000_000).toFixed(2)
 }
 
-function shortenAddress(addr: string): string {
-  if (!addr || addr.length < 12) return addr
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`
-}
-
 function shortenTxnId(txnId: string): string {
   if (!txnId || txnId.length < 16) return txnId
   return `${txnId.slice(0, 8)}...${txnId.slice(-6)}`

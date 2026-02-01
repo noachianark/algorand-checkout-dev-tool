@@ -123,11 +123,11 @@ async function payCheckout() {
     })
 
     // Encode ABI arguments (axfer is passed as transaction reference, not as arg)
-    const checkoutIdEncoded = abiMethod.args[1].type.encode(checkout.value.id)
-    const merchantEncoded = abiMethod.args[2].type.encode(checkout.value.merchantWallet)
-    const merchantNameEncoded = abiMethod.args[3].type.encode(checkout.value.merchantName || '')
-    const amountEncoded = abiMethod.args[4].type.encode(amount)
-    const noteEncoded = abiMethod.args[5].type.encode(checkout.value.note || '')
+    const checkoutIdEncoded = (abiMethod.args[1]!.type as algosdk.ABIType).encode(checkout.value.id)
+    const merchantEncoded = (abiMethod.args[2]!.type as algosdk.ABIType).encode(checkout.value.merchantWallet)
+    const merchantNameEncoded = (abiMethod.args[3]!.type as algosdk.ABIType).encode(checkout.value.merchantName || '')
+    const amountEncoded = (abiMethod.args[4]!.type as algosdk.ABIType).encode(amount)
+    const noteEncoded = (abiMethod.args[5]!.type as algosdk.ABIType).encode(checkout.value.note || '')
 
     const appCallTxn = algosdk.makeApplicationCallTxnFromObject({
       sender: connectedAccount.value,

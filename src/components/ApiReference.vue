@@ -102,6 +102,76 @@ const endpoints: ApiEndpoint[] = [
     description: 'Get payments for a checkout',
     category: 'Payments',
   },
+  // Exchange Rate endpoints
+  {
+    method: 'GET',
+    path: '/api/exchange-rate/:assetId',
+    description: 'Get exchange rate for a single asset',
+    category: 'Exchange Rates',
+    responseExample: `{
+  "assetId": "algorand",
+  "symbol": "ALGO",
+  "rate": 0.1823,
+  "stale": false,
+  "cachedAt": "2024-01-28T10:30:00Z"
+}`
+  },
+  {
+    method: 'POST',
+    path: '/api/exchange-rate/batch',
+    description: 'Batch fetch exchange rates for multiple assets',
+    category: 'Exchange Rates',
+    requestBody: `{
+  "assetIds": ["algorand", "usd-coin", "tether"]
+}`,
+    responseExample: `{
+  "rates": {
+    "algorand": { "rate": 0.1823, "stale": false, ... },
+    "usd-coin": { "rate": 1.0001, "stale": false, ... }
+  }
+}`
+  },
+  {
+    method: 'GET',
+    path: '/api/exchange-rate/asa/mappings',
+    description: 'List all supported ASA mappings',
+    category: 'Exchange Rates',
+    responseExample: `{
+  "mappings": [
+    {
+      "symbol": "ALGO",
+      "name": "Algorand",
+      "coingeckoId": "algorand",
+      "asaIdTestnet": null,
+      "asaIdMainnet": null,
+      "isNative": true
+    },
+    {
+      "symbol": "USDC",
+      "coingeckoId": "usd-coin",
+      "asaIdTestnet": "10458941",
+      "asaIdMainnet": "31566704"
+    }
+  ],
+  "network": "testnet"
+}`
+  },
+  {
+    method: 'GET',
+    path: '/api/exchange-rate/asa/lookup/:identifier',
+    description: 'Lookup ASA by symbol or ASA ID',
+    category: 'Exchange Rates',
+    responseExample: `{
+  "mapping": {
+    "symbol": "USDC",
+    "name": "USD Coin",
+    "coingeckoId": "usd-coin",
+    "asaIdTestnet": "10458941",
+    "asaIdMainnet": "31566704"
+  },
+  "network": "testnet"
+}`
+  },
   // Config endpoints
   {
     method: 'GET',

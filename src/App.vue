@@ -7,8 +7,9 @@ import CheckoutList from './components/CheckoutList.vue'
 import ApiReference from './components/ApiReference.vue'
 import PaymentStats from './components/PaymentStats.vue'
 import PaymentQuery from './components/PaymentQuery.vue'
+import ExchangeRateDemo from './components/ExchangeRateDemo.vue'
 
-type Page = 'api' | 'create' | 'checkouts' | 'stats' | 'query'
+type Page = 'api' | 'create' | 'checkouts' | 'stats' | 'query' | 'rates'
 
 const currentPage = ref<Page>('api')
 const sidebarCollapsed = ref(false)
@@ -29,6 +30,7 @@ const navItems = [
   { id: 'checkouts' as Page, label: 'All Checkouts', icon: 'list' },
   { id: 'stats' as Page, label: 'Payment Stats', icon: 'chart' },
   { id: 'query' as Page, label: 'Query Payments', icon: 'search' },
+  { id: 'rates' as Page, label: 'Exchange Rates', icon: 'dollar' },
 ]
 
 function getIconSvg(icon: string): string {
@@ -40,6 +42,7 @@ function getIconSvg(icon: string): string {
     menu: `<line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>`,
     list: `<line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line>`,
     search: `<circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>`,
+    dollar: `<line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>`,
   }
   return icons[icon] || ''
 }
@@ -107,6 +110,7 @@ function getIconSvg(icon: string): string {
         <CheckoutList v-else-if="currentPage === 'checkouts'" />
         <PaymentStats v-else-if="currentPage === 'stats'" />
         <PaymentQuery v-else-if="currentPage === 'query'" />
+        <ExchangeRateDemo v-else-if="currentPage === 'rates'" />
       </main>
     </div>
   </div>

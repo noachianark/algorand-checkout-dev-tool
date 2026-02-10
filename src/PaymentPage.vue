@@ -12,6 +12,7 @@ interface Checkout {
   amount: string
   assetId: string
   note: string
+  method: string
   status: string
   expiresAt: string
 }
@@ -22,18 +23,36 @@ interface AlgodConfig {
   token: string
 }
 
+interface AssetRate {
+  symbol: string
+  name: string
+  decimals: number
+  rate: number
+  stale: boolean
+  cachedAt: string | null
+}
+
 // Get checkout data and config from window (injected by server)
 declare global {
   interface Window {
     __CHECKOUT__: Checkout
     __ALGOD_CONFIG__: AlgodConfig
     __NETWORK_ID__: string
+    __ASSET_RATE__?: AssetRate
   }
 }
 
 const checkout = ref<Checkout>(window.__CHECKOUT__)
 const algodConfig = window.__ALGOD_CONFIG__
 const networkId = window.__NETWORK_ID__
+const assetRate = ref<AssetRate>(window.__ASSET_RATE__ || {
+  symbol: 'ASA',
+  name: 'Unknown Asset',
+  decimals: 6,
+  rate: 0,
+  stale: true,
+  cachedAt: null,
+})
 
 const peraWallet = new PeraWalletConnect()
 const algodClient = new algosdk.Algodv2(algodConfig.token, algodConfig.server, algodConfig.port)
@@ -49,10 +68,19 @@ const copiedContract = ref(false)
 const isConnected = computed(() => !!connectedAccount.value)
 
 const formattedAmount = computed(() => {
-  return (Number(checkout.value.amount) / 1_000_000).toFixed(2)
+  const divisor = Math.pow(10, assetRate.value.decimals)
+  return (Number(checkout.value.amount) / divisor).toFixed(2)
+})
+
+const usdValue = computed(() => {
+  if (!assetRate.value.rate || assetRate.value.rate === 0) return null
+  const divisor = Math.pow(10, assetRate.value.decimals)
+  const tokenAmount = Number(checkout.value.amount) / divisor
+  return (tokenAmount * assetRate.value.rate).toFixed(2)
 })
 
 const contractAddress = computed(() => {
+  if (checkout.value.method === 'direct' || checkout.value.appId === '0') return ''
   try {
     return algosdk.getApplicationAddress(BigInt(checkout.value.appId)).toString()
   } catch {
@@ -130,6 +158,16 @@ function disconnect() {
 }
 
 async function pay() {
+  if (!connectedAccount.value) return
+
+  if (checkout.value.method === 'direct') {
+    await payDirect()
+  } else {
+    await payViaContract()
+  }
+}
+
+async function payViaContract() {
   if (!connectedAccount.value) return
 
   paying.value = true
@@ -212,6 +250,60 @@ async function pay() {
   }
 }
 
+async function payDirect() {
+  if (!connectedAccount.value) return
+
+  paying.value = true
+  error.value = null
+  success.value = null
+
+  try {
+    const suggestedParams = await algodClient.getTransactionParams().do()
+    const assetId = BigInt(checkout.value.assetId)
+    const amount = BigInt(checkout.value.amount)
+    const noteStr = `wt-pay:${checkout.value.id}`
+    const note = new TextEncoder().encode(noteStr)
+
+    // Simple asset transfer directly to merchant wallet
+    const assetTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+      sender: connectedAccount.value,
+      receiver: checkout.value.merchantWallet,
+      assetIndex: assetId,
+      amount: amount,
+      note,
+      suggestedParams,
+    })
+
+    // Sign with Pera (single transaction)
+    const signedTxns = await peraWallet.signTransaction([[{ txn: assetTxn }]])
+
+    // Send and wait for confirmation
+    const response = await algodClient.sendRawTransaction(signedTxns).do()
+    const txId = response.txid
+    await algosdk.waitForConfirmation(algodClient, txId, 4)
+
+    // Report transaction to server (non-fatal)
+    try {
+      await fetch(`/api/checkouts/${encodeURIComponent(checkout.value.id)}/report-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transactionId: txId }),
+      })
+    } catch {
+      // Non-fatal - reconciliation worker will pick it up
+    }
+
+    success.value = txId
+    checkout.value.status = 'paid'
+  } catch (e: unknown) {
+    console.error('Payment error:', e)
+    const err = e as Error
+    error.value = err.message || 'Payment failed'
+  } finally {
+    paying.value = false
+  }
+}
+
 function shortenAddress(addr: string): string {
   if (!addr || addr.length < 12) return addr
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`
@@ -272,7 +364,11 @@ async function copyContractAddress() {
 
         <div class="amount-display">
           <span class="amount">{{ formattedAmount }}</span>
-          <span class="currency">USDC</span>
+          <span class="currency">{{ assetRate.symbol }}</span>
+          <div v-if="usdValue" class="usd-equivalent">
+            <span class="usd-value">~${{ usdValue }} USD</span>
+            <span v-if="assetRate.stale" class="rate-stale" title="Exchange rate may be outdated">*</span>
+          </div>
         </div>
 
         <div class="checkout-details">
@@ -284,12 +380,30 @@ async function copyContractAddress() {
             <span class="label">Merchant</span>
             <span class="value">{{ checkout.merchantName || shortenAddress(checkout.merchantWallet) }}</span>
           </div>
+          <div class="detail-row">
+            <span class="label">Asset</span>
+            <span class="value asset-value">
+              <span class="asset-symbol">{{ assetRate.symbol }}</span>
+              <span class="asset-id">(ID: {{ checkout.assetId }})</span>
+            </span>
+          </div>
+          <div v-if="assetRate.rate > 0" class="detail-row">
+            <span class="label">Rate</span>
+            <span class="value rate-value">
+              1 {{ assetRate.symbol }} = ${{ assetRate.rate.toFixed(assetRate.rate >= 1 ? 2 : 6) }}
+              <span v-if="assetRate.stale" class="rate-stale-badge">stale</span>
+            </span>
+          </div>
           <div v-if="checkout.note" class="detail-row">
             <span class="label">Note</span>
             <span class="value">{{ checkout.note }}</span>
           </div>
           <div class="detail-row">
-            <span class="label">Smart Contract</span>
+            <span class="label">Payment Method</span>
+            <span class="value">{{ checkout.method === 'direct' ? 'Direct Transfer' : 'Smart Contract' }}</span>
+          </div>
+          <div v-if="checkout.method !== 'direct'" class="detail-row">
+            <span class="label">Contract</span>
             <div class="value contract-value">
               <span class="contract-address" @click="copyContractAddress" :title="contractAddress">
                 {{ shortenAddress(contractAddress) }}
@@ -327,7 +441,7 @@ async function copyContractAddress() {
           </button>
 
           <button v-if="isConnected" @click="pay" :disabled="paying" class="btn btn-primary">
-            {{ paying ? 'Processing...' : 'Pay Now' }}
+            {{ paying ? 'Processing...' : (checkout.method === 'direct' ? 'Pay Directly' : 'Pay Now') }}
           </button>
         </div>
 
@@ -607,6 +721,57 @@ async function copyContractAddress() {
   color: #2e7d32;
   margin-left: 0.5rem;
   font-weight: 600;
+}
+
+.usd-equivalent {
+  margin-top: 0.5rem;
+  font-size: 1rem;
+  color: #6c757d;
+}
+
+.usd-value {
+  font-weight: 500;
+}
+
+.rate-stale {
+  color: #f57c00;
+  font-weight: bold;
+  margin-left: 0.25rem;
+}
+
+.asset-value {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.asset-symbol {
+  font-weight: 600;
+  color: #2e7d32;
+}
+
+.asset-id {
+  font-size: 0.75rem;
+  color: #6c757d;
+  font-family: 'Monaco', 'Menlo', monospace;
+}
+
+.rate-value {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 0.8rem;
+}
+
+.rate-stale-badge {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.4rem;
+  background: #fff8e1;
+  color: #f57c00;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .checkout-details {

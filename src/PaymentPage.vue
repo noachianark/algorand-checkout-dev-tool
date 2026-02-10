@@ -7,8 +7,8 @@ import logoIcon from './assets/icon-1024.png'
 interface Checkout {
   id: string
   appId: string
-  merchantWallet: string
-  merchantName: string
+  payeeWallet: string
+  payeeName: string
   amount: string
   assetId: string
   note: string
@@ -93,6 +93,13 @@ const peraExplorerUrl = computed(() => {
     ? 'https://explorer.perawallet.app/application'
     : 'https://testnet.explorer.perawallet.app/application'
   return `${baseUrl}/${checkout.value.appId}`
+})
+
+const payeeExplorerUrl = computed(() => {
+  const baseUrl = networkId === 'mainnet'
+    ? 'https://explorer.perawallet.app/address'
+    : 'https://testnet.explorer.perawallet.app/address'
+  return `${baseUrl}/${checkout.value.payeeWallet}`
 })
 
 const timeRemaining = ref('')
@@ -196,8 +203,8 @@ async function payViaContract() {
       args: [
         { type: 'axfer', name: 'payment' },
         { type: 'string', name: 'checkoutId' },
-        { type: 'address', name: 'merchantWallet' },
-        { type: 'string', name: 'merchantName' },
+        { type: 'address', name: 'payeeWallet' },
+        { type: 'string', name: 'payeeName' },
         { type: 'uint64', name: 'expectedAmount' },
         { type: 'string', name: 'note' },
       ],
@@ -205,8 +212,8 @@ async function payViaContract() {
     })
 
     const checkoutIdEncoded = (abiMethod.args[1]!.type as algosdk.ABIType).encode(checkout.value.id)
-    const merchantEncoded = (abiMethod.args[2]!.type as algosdk.ABIType).encode(checkout.value.merchantWallet)
-    const merchantNameEncoded = (abiMethod.args[3]!.type as algosdk.ABIType).encode(checkout.value.merchantName || '')
+    const payeeEncoded = (abiMethod.args[2]!.type as algosdk.ABIType).encode(checkout.value.payeeWallet)
+    const payeeNameEncoded = (abiMethod.args[3]!.type as algosdk.ABIType).encode(checkout.value.payeeName || '')
     const amountEncoded = (abiMethod.args[4]!.type as algosdk.ABIType).encode(amount)
     const noteEncoded = (abiMethod.args[5]!.type as algosdk.ABIType).encode(checkout.value.note || '')
 
@@ -217,13 +224,13 @@ async function payViaContract() {
       appArgs: [
         abiMethod.getSelector(),
         checkoutIdEncoded,
-        merchantEncoded,
-        merchantNameEncoded,
+        payeeEncoded,
+        payeeNameEncoded,
         amountEncoded,
         noteEncoded,
       ],
       foreignAssets: [assetId],
-      accounts: [checkout.value.merchantWallet],
+      accounts: [checkout.value.payeeWallet],
       suggestedParams: { ...suggestedParams, fee: 2000, flatFee: true },
     })
 
@@ -264,10 +271,10 @@ async function payDirect() {
     const noteStr = `wt-pay:${checkout.value.id}`
     const note = new TextEncoder().encode(noteStr)
 
-    // Simple asset transfer directly to merchant wallet
+    // Simple asset transfer directly to payee wallet
     const assetTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
       sender: connectedAccount.value,
-      receiver: checkout.value.merchantWallet,
+      receiver: checkout.value.payeeWallet,
       assetIndex: assetId,
       amount: amount,
       note,
@@ -377,8 +384,20 @@ async function copyContractAddress() {
             <span class="value">{{ checkout.id }}</span>
           </div>
           <div class="detail-row">
-            <span class="label">Merchant</span>
-            <span class="value">{{ checkout.merchantName || shortenAddress(checkout.merchantWallet) }}</span>
+            <span class="label">Payee</span>
+            <span class="value">{{ checkout.payeeName || shortenAddress(checkout.payeeWallet) }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Wallet</span>
+            <div class="value wallet-value">
+              <code :title="checkout.payeeWallet">{{ shortenAddress(checkout.payeeWallet) }}</code>
+              <a :href="payeeExplorerUrl" target="_blank" class="explorer-link" title="View on Pera Explorer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
+              </a>
+            </div>
           </div>
           <div class="detail-row">
             <span class="label">Asset</span>
@@ -387,6 +406,8 @@ async function copyContractAddress() {
               <span class="asset-id">(ID: {{ checkout.assetId }})</span>
             </span>
           </div>
+          <!-- Rate hidden for now -->
+          <!--
           <div v-if="assetRate.rate > 0" class="detail-row">
             <span class="label">Rate</span>
             <span class="value rate-value">
@@ -394,13 +415,10 @@ async function copyContractAddress() {
               <span v-if="assetRate.stale" class="rate-stale-badge">stale</span>
             </span>
           </div>
+          -->
           <div v-if="checkout.note" class="detail-row">
             <span class="label">Note</span>
             <span class="value">{{ checkout.note }}</span>
-          </div>
-          <div class="detail-row">
-            <span class="label">Payment Method</span>
-            <span class="value">{{ checkout.method === 'direct' ? 'Direct Transfer' : 'Smart Contract' }}</span>
           </div>
           <div v-if="checkout.method !== 'direct'" class="detail-row">
             <span class="label">Contract</span>
@@ -441,15 +459,15 @@ async function copyContractAddress() {
           </button>
 
           <button v-if="isConnected" @click="pay" :disabled="paying" class="btn btn-primary">
-            {{ paying ? 'Processing...' : (checkout.method === 'direct' ? 'Pay Directly' : 'Pay Now') }}
+            {{ paying ? 'Processing...' : 'Pay' }}
           </button>
         </div>
 
         <div v-else class="paid-notice">
           <template v-if="checkout.status === 'notified'">This checkout has been paid and processed.</template>
           <template v-else-if="checkout.status === 'paid'">This checkout has been paid. Awaiting confirmation...</template>
-          <template v-else-if="checkout.status === 'expired'">This checkout has expired. Please request a new checkout from the merchant.</template>
-          <template v-else-if="checkout.status === 'failed'">This checkout has failed. Please contact the merchant for assistance.</template>
+          <template v-else-if="checkout.status === 'expired'">This checkout has expired. Please request a new checkout from the payee.</template>
+          <template v-else-if="checkout.status === 'failed'">This checkout has failed. Please contact the payee for assistance.</template>
         </div>
       </div>
 
@@ -806,6 +824,21 @@ async function copyContractAddress() {
 .value.expires {
   color: #f57c00;
   font-weight: 600;
+}
+
+.wallet-value {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wallet-value code {
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 0.8rem;
+  color: #495057;
+  padding: 0.25rem 0.5rem;
+  background: #e9ecef;
+  border-radius: 4px;
 }
 
 .contract-value {

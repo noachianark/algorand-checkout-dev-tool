@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useApiEndpoint } from '../composables/useApiEndpoint'
+
+const { apiUrl } = useApiEndpoint()
 
 interface Payment {
   id: number
@@ -7,8 +10,8 @@ interface Payment {
   appId: string
   checkoutId: string
   payer: string
-  merchant: string
-  merchantName: string | null
+  payee: string
+  payeeName: string | null
   amount: string
   assetId: string
   note: string | null
@@ -41,11 +44,11 @@ async function search() {
   searched.value = true
 
   try {
-    const endpoint = queryType.value === 'txn'
+    const path = queryType.value === 'txn'
       ? `/api/payments/txn/${encodeURIComponent(queryValue.value)}`
       : `/api/payments/checkout/${encodeURIComponent(queryValue.value)}`
 
-    const res = await fetch(endpoint)
+    const res = await fetch(apiUrl(path))
 
     if (res.status === 404) {
       results.value = []
@@ -209,8 +212,8 @@ function copyToClipboard(text: string) {
               </div>
 
               <div class="info-item">
-                <span class="label">Merchant</span>
-                <span>{{ payment.merchantName || shortenAddress(payment.merchant) }}</span>
+                <span class="label">Payee</span>
+                <span>{{ payment.payeeName || shortenAddress(payment.payee) }}</span>
               </div>
 
               <div class="info-item">
@@ -249,21 +252,21 @@ function copyToClipboard(text: string) {
     <div class="quick-links">
       <h3>Quick Links</h3>
       <div class="links-grid">
-        <a href="/api/payments/stats" target="_blank" class="link-card">
+        <a :href="apiUrl('/api/payments/stats')" target="_blank" class="link-card">
           <span class="link-icon">stats</span>
           <span class="link-text">
             <strong>Payment Stats</strong>
             <span>GET /api/payments/stats</span>
           </span>
         </a>
-        <a href="/api/payments/recent" target="_blank" class="link-card">
+        <a :href="apiUrl('/api/payments/recent')" target="_blank" class="link-card">
           <span class="link-icon">list</span>
           <span class="link-text">
             <strong>Recent Payments</strong>
             <span>GET /api/payments/recent</span>
           </span>
         </a>
-        <a href="/api/checkouts" target="_blank" class="link-card">
+        <a :href="apiUrl('/api/checkouts')" target="_blank" class="link-card">
           <span class="link-icon">cart</span>
           <span class="link-text">
             <strong>All Checkouts</strong>

@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
+import { useApiEndpoint } from '../composables/useApiEndpoint'
+
+const { apiUrl } = useApiEndpoint()
 
 interface Stats {
   pending: number
@@ -14,8 +17,8 @@ interface Payment {
   appId: string
   checkoutId: string
   payer: string
-  merchant: string
-  merchantName: string | null
+  payee: string
+  payeeName: string | null
   amount: string
   assetId: string
   status: 'pending' | 'delivered' | 'failed'
@@ -36,8 +39,8 @@ let refreshInterval: ReturnType<typeof setInterval> | null = null
 async function fetchData() {
   try {
     const [statsRes, paymentsRes] = await Promise.all([
-      fetch('/api/payments/stats'),
-      fetch('/api/payments/recent?limit=20'),
+      fetch(apiUrl('/api/payments/stats')),
+      fetch(apiUrl('/api/payments/recent?limit=20')),
     ])
 
     if (!statsRes.ok || !paymentsRes.ok) {

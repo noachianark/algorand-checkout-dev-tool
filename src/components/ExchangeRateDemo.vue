@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useApiEndpoint } from '../composables/useApiEndpoint'
+
+const { apiUrl } = useApiEndpoint()
 
 interface AsaMapping {
   id: number
@@ -39,7 +42,7 @@ let refreshInterval: ReturnType<typeof setInterval> | null = null
 
 async function fetchAsaMappings() {
   try {
-    const res = await fetch('/api/exchange-rate/asa/mappings')
+    const res = await fetch(apiUrl('/api/exchange-rate/asa/mappings'))
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
     asaMappings.value = data.mappings
@@ -58,7 +61,7 @@ async function fetchAllRates() {
   try {
     // Use batch endpoint for efficiency
     const coingeckoIds = asaMappings.value.map(m => m.coingeckoId)
-    const res = await fetch('/api/exchange-rate/batch', {
+    const res = await fetch(apiUrl('/api/exchange-rate/batch'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ assetIds: coingeckoIds }),
@@ -90,7 +93,7 @@ async function lookupRate() {
   lookupResult.value = null
 
   try {
-    const res = await fetch(`/api/exchange-rate/${encodeURIComponent(lookupInput.value.trim())}`)
+    const res = await fetch(apiUrl(`/api/exchange-rate/${encodeURIComponent(lookupInput.value.trim())}`))
     if (!res.ok) {
       if (res.status === 503) {
         const data = await res.json()

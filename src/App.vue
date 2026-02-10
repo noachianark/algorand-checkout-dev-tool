@@ -2,25 +2,27 @@
 import { ref, computed } from 'vue'
 import WalletConnect from './components/WalletConnect.vue'
 import NetworkSelector from './components/NetworkSelector.vue'
+import EndpointSelector from './components/EndpointSelector.vue'
 import CheckoutCreator from './components/CheckoutCreator.vue'
 import CheckoutList from './components/CheckoutList.vue'
 import ApiReference from './components/ApiReference.vue'
 import PaymentStats from './components/PaymentStats.vue'
 import PaymentQuery from './components/PaymentQuery.vue'
 import ExchangeRateDemo from './components/ExchangeRateDemo.vue'
+import { useApiEndpoint } from './composables/useApiEndpoint'
 
 type Page = 'api' | 'create' | 'checkouts' | 'stats' | 'query' | 'rates'
 
 const currentPage = ref<Page>('api')
 const sidebarCollapsed = ref(false)
 
-// API URL from environment variable
-const apiUrl = computed(() => {
-  const url = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const { baseUrl } = useApiEndpoint()
+
+const apiUrlDisplay = computed(() => {
   try {
-    return new URL(url).host
+    return new URL(baseUrl.value).host
   } catch {
-    return url
+    return baseUrl.value
   }
 })
 
@@ -85,7 +87,7 @@ function getIconSvg(icon: string): string {
       <div class="sidebar-footer" v-show="!sidebarCollapsed">
         <div class="api-status">
           <span class="status-dot"></span>
-          <span>API: {{ apiUrl }}</span>
+          <span>API: {{ apiUrlDisplay }}</span>
         </div>
       </div>
     </aside>
@@ -99,6 +101,7 @@ function getIconSvg(icon: string): string {
         </div>
         <div class="topbar-right">
           <NetworkSelector />
+          <EndpointSelector />
           <WalletConnect />
         </div>
       </header>

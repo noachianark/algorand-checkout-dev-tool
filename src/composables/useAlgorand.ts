@@ -2,7 +2,7 @@ import { ref, computed, shallowRef } from 'vue'
 import { PeraWalletConnect } from '@perawallet/connect'
 import algosdk from 'algosdk'
 
-export type NetworkId = 'localnet' | 'testnet' | 'mainnet'
+export type NetworkId = 'testnet' | 'mainnet'
 
 interface NetworkConfig {
   name: string
@@ -12,12 +12,6 @@ interface NetworkConfig {
 }
 
 const NETWORKS: Record<NetworkId, NetworkConfig> = {
-  localnet: {
-    name: 'LocalNet',
-    algodServer: import.meta.env.VITE_ALGOD_SERVER || 'http://localhost',
-    algodPort: import.meta.env.VITE_ALGOD_PORT || '4001',
-    algodToken: import.meta.env.VITE_ALGOD_TOKEN || 'a'.repeat(64),
-  },
   testnet: {
     name: 'TestNet',
     algodServer: 'https://testnet-api.algonode.cloud',
@@ -39,7 +33,7 @@ const isInitialized = ref(false)
 
 // Network state
 const networkId = ref<NetworkId>(
-  (localStorage.getItem('network') as NetworkId) || 'localnet'
+  (localStorage.getItem('network') as NetworkId) || 'testnet'
 )
 
 // Algod client (recreated when network changes)

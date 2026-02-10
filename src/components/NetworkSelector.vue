@@ -4,7 +4,6 @@ import { useAlgorand, type NetworkId } from '../composables/useAlgorand'
 const { networkId, networks, switchNetwork } = useAlgorand()
 
 const networkColors: Record<NetworkId, string> = {
-  localnet: '#4ade80', // green
   testnet: '#fbbf24', // yellow
   mainnet: '#f87171', // red
 }

@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useApiEndpoint } from '../composables/useApiEndpoint'
+
+const { apiUrl, baseUrl } = useApiEndpoint()
 
 interface Checkout {
   id: string
   appId: string
-  merchantWallet: string
-  merchantName: string
+  payeeWallet: string
+  payeeName: string
   amount: string
   assetId: string
   note: string
@@ -38,8 +41,8 @@ const filteredCheckouts = computed(() => {
     const query = searchQuery.value.toLowerCase()
     result = result.filter(c =>
       c.id.toLowerCase().includes(query) ||
-      c.merchantName.toLowerCase().includes(query) ||
-      c.merchantWallet.toLowerCase().includes(query)
+      c.payeeName.toLowerCase().includes(query) ||
+      c.payeeWallet.toLowerCase().includes(query)
     )
   }
 
@@ -59,7 +62,7 @@ async function fetchCheckouts() {
   loading.value = true
   error.value = null
   try {
-    const res = await fetch('/api/checkouts')
+    const res = await fetch(apiUrl('/api/checkouts'))
     if (!res.ok) throw new Error('Failed to fetch checkouts')
     checkouts.value = await res.json()
   } catch (e) {
@@ -102,11 +105,11 @@ function getStatusColor(status: string): string {
 }
 
 function copyPaymentUrl(url: string) {
-  navigator.clipboard.writeText(window.location.origin + url)
+  navigator.clipboard.writeText(baseUrl.value + url)
 }
 
 function openPaymentUrl(url: string) {
-  window.open(url, '_blank')
+  window.open(baseUrl.value + url, '_blank')
 }
 
 onMounted(fetchCheckouts)
@@ -132,7 +135,7 @@ onMounted(fetchCheckouts)
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="Search by ID, merchant..."
+          placeholder="Search by ID, payee..."
         />
       </div>
       <div class="status-filters">
@@ -193,8 +196,8 @@ onMounted(fetchCheckouts)
 
           <div class="details">
             <div class="detail-row">
-              <span class="label">Merchant</span>
-              <span class="value">{{ checkout.merchantName || shortenAddress(checkout.merchantWallet) }}</span>
+              <span class="label">Payee</span>
+              <span class="value">{{ checkout.payeeName || shortenAddress(checkout.payeeWallet) }}</span>
             </div>
             <div class="detail-row">
               <span class="label">Method</span>

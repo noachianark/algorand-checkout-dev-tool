@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useAlgorand } from '../composables/useAlgorand'
+import { useApiEndpoint } from '../composables/useApiEndpoint'
 import algosdk from 'algosdk'
+
+const { apiUrl } = useApiEndpoint()
 
 interface Checkout {
   id: string
   appId: string
-  merchantWallet: string
-  merchantName: string
+  payeeWallet: string
+  payeeName: string
   amount: string
   assetId: string
   note: string
@@ -55,8 +58,8 @@ const transactionPreview = computed(() => {
       args: [
         { name: 'payment', value: 'Asset Transfer (grouped)' },
         { name: 'checkoutId', value: checkout.value.id },
-        { name: 'merchantWallet', value: checkout.value.merchantWallet },
-        { name: 'merchantName', value: checkout.value.merchantName || '(none)' },
+        { name: 'payeeWallet', value: checkout.value.payeeWallet },
+        { name: 'payeeName', value: checkout.value.payeeName || '(none)' },
         { name: 'expectedAmount', value: checkout.value.amount },
         { name: 'note', value: checkout.value.note || '(none)' },
       ],
@@ -74,7 +77,7 @@ onMounted(async () => {
 
   loading.value = true
   try {
-    const res = await fetch(`/api/checkouts/${checkoutId}`)
+    const res = await fetch(apiUrl(`/api/checkouts/${checkoutId}`))
     if (!res.ok) throw new Error('Checkout not found')
     checkout.value = await res.json()
   } catch (e) {
@@ -114,8 +117,8 @@ async function payCheckout() {
       args: [
         { type: 'axfer', name: 'payment' },
         { type: 'string', name: 'checkoutId' },
-        { type: 'address', name: 'merchantWallet' },
-        { type: 'string', name: 'merchantName' },
+        { type: 'address', name: 'payeeWallet' },
+        { type: 'string', name: 'payeeName' },
         { type: 'uint64', name: 'expectedAmount' },
         { type: 'string', name: 'note' },
       ],
@@ -124,8 +127,8 @@ async function payCheckout() {
 
     // Encode ABI arguments (axfer is passed as transaction reference, not as arg)
     const checkoutIdEncoded = (abiMethod.args[1]!.type as algosdk.ABIType).encode(checkout.value.id)
-    const merchantEncoded = (abiMethod.args[2]!.type as algosdk.ABIType).encode(checkout.value.merchantWallet)
-    const merchantNameEncoded = (abiMethod.args[3]!.type as algosdk.ABIType).encode(checkout.value.merchantName || '')
+    const payeeEncoded = (abiMethod.args[2]!.type as algosdk.ABIType).encode(checkout.value.payeeWallet)
+    const payeeNameEncoded = (abiMethod.args[3]!.type as algosdk.ABIType).encode(checkout.value.payeeName || '')
     const amountEncoded = (abiMethod.args[4]!.type as algosdk.ABIType).encode(amount)
     const noteEncoded = (abiMethod.args[5]!.type as algosdk.ABIType).encode(checkout.value.note || '')
 
@@ -136,13 +139,13 @@ async function payCheckout() {
       appArgs: [
         abiMethod.getSelector(),  // 4-byte method selector
         checkoutIdEncoded,
-        merchantEncoded,
-        merchantNameEncoded,
+        payeeEncoded,
+        payeeNameEncoded,
         amountEncoded,
         noteEncoded,
       ],
       foreignAssets: [assetId],
-      accounts: [checkout.value.merchantWallet],
+      accounts: [checkout.value.payeeWallet],
       suggestedParams: { ...suggestedParams, fee: 2000, flatFee: true },
     })
 
@@ -154,7 +157,7 @@ async function payCheckout() {
 
     // Reload checkout to show updated status
     setTimeout(async () => {
-      const res = await fetch(`/api/checkouts/${checkout.value!.id}`)
+      const res = await fetch(apiUrl(`/api/checkouts/${checkout.value!.id}`))
       if (res.ok) checkout.value = await res.json()
     }, 2000)
   } catch (e) {
@@ -199,8 +202,8 @@ function shortenAddress(addr: string): string {
             <span class="value">{{ checkout.id }}</span>
           </div>
           <div class="detail-row">
-            <span class="label">Merchant</span>
-            <span class="value">{{ checkout.merchantName || shortenAddress(checkout.merchantWallet) }}</span>
+            <span class="label">Payee</span>
+            <span class="value">{{ checkout.payeeName || shortenAddress(checkout.payeeWallet) }}</span>
           </div>
           <div v-if="checkout.note" class="detail-row">
             <span class="label">Note</span>
@@ -313,7 +316,7 @@ function shortenAddress(addr: string): string {
                   <span class="args-label">Arguments:</span>
                   <div v-for="arg in transactionPreview.txn2.args" :key="arg.name" class="arg-row">
                     <span class="arg-name">{{ arg.name }}</span>
-                    <code class="arg-value">{{ arg.name === 'merchantWallet' ? shortenAddress(arg.value) : arg.value }}</code>
+                    <code class="arg-value">{{ arg.name === 'payeeWallet' ? shortenAddress(arg.value) : arg.value }}</code>
                   </div>
                 </div>
               </div>
@@ -332,7 +335,7 @@ function shortenAddress(addr: string): string {
               <div class="flow-arrow">→</div>
               <div class="flow-step">
                 <span class="flow-icon">🏪</span>
-                <span>Merchant receives USDC</span>
+                <span>Payee receives USDC</span>
               </div>
             </div>
           </div>

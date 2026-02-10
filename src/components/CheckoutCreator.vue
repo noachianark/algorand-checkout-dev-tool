@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useApiEndpoint } from '../composables/useApiEndpoint'
 
-// API URL from environment variable
-const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'
+const { apiUrl, baseUrl } = useApiEndpoint()
 
 interface CheckoutResponse {
   id: string
   appId: string
-  merchantWallet: string
+  payeeWallet: string
   amount: string
   assetId: string
   callbackUrl: string
@@ -20,8 +20,8 @@ const form = ref({
   checkoutId: `CHK-${Date.now()}`,
   method: 'direct' as 'contract' | 'direct',
   appId: '754674671',
-  merchantWallet: 'FXC3F4IFAST3VTUVL4TSYNROIHF675QDYX4YEKBU3CD3NZZQAYX3BPOH5A',
-  merchantName: 'Demo Store',
+  payeeWallet: 'FXC3F4IFAST3VTUVL4TSYNROIHF675QDYX4YEKBU3CD3NZZQAYX3BPOH5A',
+  payeeName: 'Demo Store',
   amount: '1000000',
   assetId: '10458941',
   note: '',
@@ -48,7 +48,7 @@ const requestBody = computed(() => {
 // Full payment URL (API base + relative path)
 const fullPaymentUrl = computed(() => {
   if (!response.value?.paymentUrl) return ''
-  return apiBaseUrl + response.value.paymentUrl
+  return baseUrl.value + response.value.paymentUrl
 })
 
 async function createCheckout() {
@@ -62,7 +62,7 @@ async function createCheckout() {
       delete body.appId
     }
 
-    const res = await fetch('/api/checkouts', {
+    const res = await fetch(apiUrl('/api/checkouts'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -150,17 +150,17 @@ function generateCheckoutId() {
           </div>
 
           <div class="form-group full-width">
-            <label>Merchant Wallet</label>
+            <label>Payee Wallet</label>
             <input
-              v-model="form.merchantWallet"
+              v-model="form.payeeWallet"
               type="text"
               placeholder="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAY5HFKQ"
             />
           </div>
 
           <div class="form-group">
-            <label>Merchant Name</label>
-            <input v-model="form.merchantName" type="text" placeholder="My Store" />
+            <label>Payee Name</label>
+            <input v-model="form.payeeName" type="text" placeholder="My Store" />
           </div>
 
           <div class="form-group">

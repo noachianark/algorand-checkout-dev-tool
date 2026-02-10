@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
+import { useApiEndpoint } from '../composables/useApiEndpoint'
 
-// API URL from environment variable
-const apiBaseUrl = computed(() => import.meta.env.VITE_API_URL || 'http://localhost:3001')
+const { baseUrl } = useApiEndpoint()
 
 interface ApiEndpoint {
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE'
@@ -23,8 +23,8 @@ const endpoints: ApiEndpoint[] = [
     requestBody: `{
   "checkoutId": "CHK-001",
   "appId": "754674671",
-  "merchantWallet": "ALGO...",
-  "merchantName": "My Store",
+  "payeeWallet": "ALGO...",
+  "payeeName": "My Store",
   "amount": "1000000",
   "assetId": "10458941",
   "note": "Order #123"
@@ -222,7 +222,7 @@ function getMethodColor(method: string): string {
 
     <div class="base-url">
       <span class="label">Base URL</span>
-      <code>{{ apiBaseUrl }}</code>
+      <code>{{ baseUrl }}</code>
     </div>
 
     <div v-for="category in categories" :key="category" class="category">
@@ -275,8 +275,8 @@ function getMethodColor(method: string): string {
   "checkoutId": "CHK-001",
   "transactionId": "ABCD1234...",
   "payer": "ALGO_WALLET_ADDRESS...",
-  "merchant": "MERCHANT_WALLET...",
-  "merchantName": "My Store",
+  "payee": "PAYEE_WALLET...",
+  "payeeName": "My Store",
   "amount": "1000000",
   "assetId": "10458941",
   "confirmedRound": 12345678,

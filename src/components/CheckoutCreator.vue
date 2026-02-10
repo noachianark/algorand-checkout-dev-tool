@@ -18,6 +18,7 @@ interface CheckoutResponse {
 
 const form = ref({
   checkoutId: `CHK-${Date.now()}`,
+  method: 'direct' as 'contract' | 'direct',
   appId: '754674671',
   merchantWallet: 'FXC3F4IFAST3VTUVL4TSYNROIHF675QDYX4YEKBU3CD3NZZQAYX3BPOH5A',
   merchantName: 'Demo Store',
@@ -36,7 +37,13 @@ const formattedAmount = computed(() => {
   return isNaN(amt) ? '0.00' : amt.toFixed(2)
 })
 
-const requestBody = computed(() => JSON.stringify(form.value, null, 2))
+const requestBody = computed(() => {
+  const body: Record<string, string> = { ...form.value }
+  if (form.value.method === 'direct') {
+    delete body.appId
+  }
+  return JSON.stringify(body, null, 2)
+})
 
 // Full payment URL (API base + relative path)
 const fullPaymentUrl = computed(() => {
@@ -50,10 +57,15 @@ async function createCheckout() {
   response.value = null
 
   try {
+    const body: Record<string, string> = { ...form.value }
+    if (form.value.method === 'direct') {
+      delete body.appId
+    }
+
     const res = await fetch('/api/checkouts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form.value),
+      body: JSON.stringify(body),
     })
 
     const data = await res.json()
@@ -115,6 +127,24 @@ function generateCheckoutId() {
           </div>
 
           <div class="form-group">
+            <label>Payment Method</label>
+            <div class="method-toggle">
+              <button
+                :class="['toggle-btn', { active: form.method === 'direct' }]"
+                @click="form.method = 'direct'"
+              >
+                Direct Transfer
+              </button>
+              <button
+                :class="['toggle-btn', { active: form.method === 'contract' }]"
+                @click="form.method = 'contract'"
+              >
+                Smart Contract
+              </button>
+            </div>
+          </div>
+
+          <div v-if="form.method === 'contract'" class="form-group">
             <label>App ID</label>
             <input v-model="form.appId" type="text" placeholder="1033" />
           </div>
@@ -326,6 +356,40 @@ function generateCheckoutId() {
 
 .form-group input::placeholder {
   color: #444;
+}
+
+.method-toggle {
+  display: flex;
+  gap: 0;
+  border: 1px solid #333;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  background: #0f0f1a;
+  border: none;
+  color: #666;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-btn:not(:last-child) {
+  border-right: 1px solid #333;
+}
+
+.toggle-btn.active {
+  background: #ffee5522;
+  color: #ffee55;
+}
+
+.toggle-btn:hover:not(.active) {
+  background: #1a1a2e;
+  color: #aaa;
 }
 
 .input-with-button {

@@ -9,6 +9,7 @@ interface Checkout {
   amount: string
   assetId: string
   note: string
+  method: string
   status: 'pending' | 'paid' | 'notified' | 'failed' | 'expired'
   createdAt: string
   expiresAt: string
@@ -194,6 +195,12 @@ onMounted(fetchCheckouts)
             <div class="detail-row">
               <span class="label">Merchant</span>
               <span class="value">{{ checkout.merchantName || shortenAddress(checkout.merchantWallet) }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Method</span>
+              <span :class="['value', 'method-tag', checkout.method || 'contract']">
+                {{ checkout.method === 'direct' ? 'Direct' : 'Contract' }}
+              </span>
             </div>
             <div class="detail-row">
               <span class="label">Created</span>
@@ -476,6 +483,24 @@ onMounted(fetchCheckouts)
 .detail-row .value.txn {
   color: #a0a0c0;
   font-size: 0.75rem;
+}
+
+.method-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+}
+
+.method-tag.direct {
+  background: #4ade8022;
+  color: #4ade80;
+}
+
+.method-tag.contract {
+  background: #a78bfa22;
+  color: #a78bfa;
 }
 
 .card-actions {

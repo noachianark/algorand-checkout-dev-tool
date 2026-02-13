@@ -25,6 +25,7 @@ const form = ref({
   amount: '1000000',
   assetId: '10458941',
   note: '',
+  expirationDays: 7,
 })
 
 const loading = ref(false)
@@ -38,9 +39,12 @@ const formattedAmount = computed(() => {
 })
 
 const requestBody = computed(() => {
-  const body: Record<string, string> = { ...form.value }
+  const body: Record<string, string | number> = { ...form.value }
   if (form.value.method === 'direct') {
     delete body.appId
+    body.expirationDays = Number(form.value.expirationDays)
+  } else {
+    delete body.expirationDays
   }
   return JSON.stringify(body, null, 2)
 })
@@ -57,9 +61,12 @@ async function createCheckout() {
   response.value = null
 
   try {
-    const body: Record<string, string> = { ...form.value }
+    const body: Record<string, string | number> = { ...form.value }
     if (form.value.method === 'direct') {
       delete body.appId
+      body.expirationDays = Number(form.value.expirationDays)
+    } else {
+      delete body.expirationDays
     }
 
     const res = await fetch(apiUrl('/api/checkouts'), {
@@ -147,6 +154,14 @@ function generateCheckoutId() {
           <div v-if="form.method === 'contract'" class="form-group">
             <label>App ID</label>
             <input v-model="form.appId" type="text" placeholder="1033" />
+          </div>
+
+          <div v-if="form.method === 'direct'" class="form-group">
+            <label>Expiration (Days)</label>
+            <div class="input-with-hint">
+              <input v-model.number="form.expirationDays" type="number" min="1" max="365" placeholder="7" />
+              <span class="hint">{{ form.expirationDays }}d</span>
+            </div>
           </div>
 
           <div class="form-group full-width">

@@ -15,6 +15,7 @@ interface Checkout {
   method: string
   status: string
   expiresAt: string
+  transactionId?: string
 }
 
 interface AlgodConfig {
@@ -64,6 +65,7 @@ const success = ref<string | null>(null)
 const paying = ref(false)
 const copiedAddress = ref(false)
 const copiedContract = ref(false)
+const copiedTxId = ref(false)
 
 const isConnected = computed(() => !!connectedAccount.value)
 
@@ -100,6 +102,16 @@ const payeeExplorerUrl = computed(() => {
     ? 'https://explorer.perawallet.app/address'
     : 'https://testnet.explorer.perawallet.app/address'
   return `${baseUrl}/${checkout.value.payeeWallet}`
+})
+
+const displayTxId = computed(() => success.value || checkout.value.transactionId || '')
+
+const txExplorerUrl = computed(() => {
+  if (!displayTxId.value) return ''
+  const baseUrl = networkId === 'mainnet'
+    ? 'https://explorer.perawallet.app/tx'
+    : 'https://testnet.explorer.perawallet.app/tx'
+  return `${baseUrl}/${displayTxId.value}`
 })
 
 const timeRemaining = ref('')
@@ -329,6 +341,14 @@ async function copyContractAddress() {
   copiedContract.value = true
   setTimeout(() => copiedContract.value = false, 2000)
 }
+
+async function copyTxId() {
+  if (displayTxId.value) {
+    await navigator.clipboard.writeText(displayTxId.value)
+    copiedTxId.value = true
+    setTimeout(() => copiedTxId.value = false, 2000)
+  }
+}
 </script>
 
 <template>
@@ -380,7 +400,7 @@ async function copyContractAddress() {
 
         <div class="checkout-details">
           <div class="detail-row">
-            <span class="label">Checkout ID</span>
+            <span class="label">Invoice ID</span>
             <span class="value">{{ checkout.id }}</span>
           </div>
           <div class="detail-row">
@@ -445,11 +465,29 @@ async function copyContractAddress() {
 
         <div v-if="error" class="error-box">{{ error }}</div>
 
-        <div v-if="success" class="success-box">
+        <div v-if="displayTxId" class="success-box">
           <div class="success-icon">&#10003;</div>
           <div class="success-content">
-            <strong>Payment Successful!</strong>
-            <div class="tx-id">Transaction: <code>{{ shortenAddress(success) }}</code></div>
+            <strong>{{ success ? 'Payment Successful!' : 'Payment Received' }}</strong>
+            <div class="tx-id">
+              <span>Transaction:</span>
+              <code :title="displayTxId">{{ shortenAddress(displayTxId) }}</code>
+              <button @click="copyTxId" class="tx-action-btn" :title="copiedTxId ? 'Copied!' : 'Copy transaction ID'">
+                <svg v-if="!copiedTxId" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                </svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+              </button>
+              <a :href="txExplorerUrl" target="_blank" class="tx-action-btn" title="View on Pera Explorer">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.35-4.35"></path>
+                </svg>
+              </a>
+            </div>
           </div>
         </div>
 
@@ -925,6 +963,9 @@ async function copyContractAddress() {
 }
 
 .tx-id {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 0.85rem;
   color: #6c757d;
 }
@@ -934,6 +975,27 @@ async function copyContractAddress() {
   background: #e9ecef;
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
+}
+
+.tx-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: #e9ecef;
+  border: none;
+  border-radius: 6px;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.tx-action-btn:hover {
+  background: #0066cc;
+  color: #fff;
 }
 
 .action-section {

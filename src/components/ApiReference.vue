@@ -20,14 +20,28 @@ const endpoints: ApiEndpoint[] = [
     path: '/api/checkouts',
     description: 'Create a new checkout for payment',
     category: 'Checkouts',
-    requestBody: `{
+    requestBody: `// Contract method (via smart contract)
+{
   "checkoutId": "CHK-001",
+  "method": "contract",
   "appId": "754674671",
   "payeeWallet": "ALGO...",
   "payeeName": "My Store",
   "amount": "1000000",
   "assetId": "10458941",
   "note": "Order #123"
+}
+
+// Direct method (wallet-to-wallet transfer)
+{
+  "checkoutId": "CHK-002",
+  "method": "direct",
+  "payeeWallet": "ALGO...",
+  "payeeName": "My Store",
+  "amount": "1000000",
+  "assetId": "10458941",
+  "expirationDays": 7,
+  "note": "Order #456"
 }`,
     responseExample: `{
   "id": "CHK-001",
@@ -308,7 +322,7 @@ function getMethodColor(method: string): string {
       <div class="status-other">
         <div class="status-item expired">
           <span class="status-name">expired</span>
-          <span class="status-meaning">Checkout expired (30 min TTL)</span>
+          <span class="status-meaning">Checkout expired (30min default, or N days for direct)</span>
         </div>
         <div class="status-item failed">
           <span class="status-name">failed</span>

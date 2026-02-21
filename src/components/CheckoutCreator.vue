@@ -25,6 +25,7 @@ const form = ref({
   amount: '1000000',
   assetId: '10458941',
   note: '',
+  callbackUrl: '',
   expirationDays: 7,
 })
 
@@ -45,6 +46,9 @@ const requestBody = computed(() => {
     body.expirationDays = Number(form.value.expirationDays)
   } else {
     delete body.expirationDays
+  }
+  if (!body.callbackUrl) {
+    delete body.callbackUrl
   }
   return JSON.stringify(body, null, 2)
 })
@@ -67,6 +71,9 @@ async function createCheckout() {
       body.expirationDays = Number(form.value.expirationDays)
     } else {
       delete body.expirationDays
+    }
+    if (!body.callbackUrl) {
+      delete body.callbackUrl
     }
 
     const res = await fetch(apiUrl('/api/checkouts'), {
@@ -197,6 +204,15 @@ function generateCheckoutId() {
               v-model="form.note"
               type="text"
               placeholder="Order #123, Product XYZ"
+            />
+          </div>
+
+          <div class="form-group full-width">
+            <label>Callback URL (Optional)</label>
+            <input
+              v-model="form.callbackUrl"
+              type="text"
+              placeholder="https://your-saas.com/api/payment-webhook"
             />
           </div>
         </div>
